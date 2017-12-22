@@ -115,7 +115,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation.Tests
 
         public void GetTokenTest(WsFederationMessageTheoryData theoryData)
         {
-            TestUtilities.WriteHeader($"{this}.GetTokenTest", theoryData);
+            var context = TestUtilities.WriteHeader($"{this}.GetTokenTest", theoryData);
             try
             {
                 var token = theoryData.WsFederationMessageTestSet.WsFederationMessage.GetToken();
@@ -125,12 +125,14 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation.Tests
                     var tokenHandler = new Saml2SecurityTokenHandler();
                     tokenHandler.ValidateToken(token, theoryData.TokenValidationParameters, out SecurityToken validatedToken);
                 }
-                theoryData.ExpectedException.ProcessNoException();
+                theoryData.ExpectedException.ProcessNoException(context);
             }
             catch (Exception ex)
             {
-                theoryData.ExpectedException.ProcessException(ex);
+                theoryData.ExpectedException.ProcessException(ex, context);
             }
+
+            TestUtilities.AssertFailIfErrors(context);
         }
 
         public static TheoryData<WsFederationMessageTheoryData> GetTokenTheoryData

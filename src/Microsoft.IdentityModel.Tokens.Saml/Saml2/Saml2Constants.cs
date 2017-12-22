@@ -35,10 +35,10 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
     public static class Saml2Constants
     {
 #pragma warning disable 1591
-        public const string PreferredPrefix = "saml";
         public const string Namespace = "urn:oasis:names:tc:SAML:2.0:assertion";
-        public const string Saml2TokenProfile11 = "urn:oasis:names:tc:SAML:2.0:assertion";
         public const string OasisWssSaml2TokenProfile11 = "http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV2.0";
+        public const string PreferredPrefix = "saml";
+        public const string Saml2TokenProfile11 = "urn:oasis:names:tc:SAML:2.0:assertion";
         public const string Version = "2.0";
 
         // TODO - is this the right place ?
@@ -64,6 +64,9 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
 
         public const string AssertionIdPrefix = "Saml2SecurityToken-";
         public const string GeneratedDateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+
+        internal const string ClaimType2009Namespace = "http://schemas.xmlsoap.org/ws/2009/09/identity/claims";
+        internal const string MsIdentityNamespaceUri = "http://schemas.microsoft.com/ws/2008/06/identity";
 
         public static class AccessDecision
         {

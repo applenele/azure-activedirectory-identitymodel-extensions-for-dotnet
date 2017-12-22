@@ -25,7 +25,6 @@
 //
 //------------------------------------------------------------------------------
 
-// TODO review
 using System;
 using System.Security.Claims;
 using System.Xml;
@@ -40,11 +39,27 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
     public class Saml2Serializer
     {
         private DSigSerializer _dsigSerializer = DSigSerializer.Default;
+        private string _preferredPrefix = Saml2Constants.PreferredPrefix;
 
         /// <summary>
         /// Instantiates a new instance of <see cref="Saml2Serializer"/>.
         /// </summary>
         public Saml2Serializer() { }
+
+        /// <summary>
+        /// Gets or sets the prefix to use when writing xml.
+        /// </summary>
+        public string PreferredPrefix
+        {
+            get => _preferredPrefix;
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                    throw LogExceptionMessage(new ArgumentNullException(nameof(value)));
+
+                _preferredPrefix = value;
+            }
+        }
 
         /// <summary>
         /// Determines whether a URI is valid and can be created using the specified UriKind.
@@ -312,7 +327,15 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 attribute.FriendlyName = reader.GetAttribute(Saml2Constants.Attributes.FriendlyName);
 
                 // @OriginalIssuer - optional
-                attribute.OriginalIssuer = reader.GetAttribute(Saml2Constants.Attributes.OriginalIssuer);
+                string originalIssuer = reader.GetAttribute(Saml2Constants.Attributes.OriginalIssuer, Saml2Constants.ClaimType2009Namespace);
+                if (originalIssuer == null)
+                    originalIssuer = reader.GetAttribute(Saml2Constants.Attributes.OriginalIssuer, Saml2Constants.MsIdentityNamespaceUri);
+
+                if (originalIssuer == null)
+                    originalIssuer = reader.GetAttribute(Saml2Constants.Attributes.OriginalIssuer);
+
+                if (originalIssuer != null)
+                    attribute.OriginalIssuer = originalIssuer;
 
                 // content
                 reader.Read();
@@ -1426,7 +1449,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException("action.Namespace");
 
             // <Action>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Action, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Action, Saml2Constants.Namespace);
 
             // @Namespace - required
             writer.WriteAttributeString(Saml2Constants.Attributes.Namespace, action.Namespace.OriginalString);
@@ -1454,15 +1477,15 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(advice));
 
             // <Advice>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Advice, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Advice, Saml2Constants.Namespace);
 
             // <AssertionIDRef> 0-OO
             foreach (Saml2Id id in advice.AssertionIdReferences)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AssertionIDRef, Saml2Constants.Namespace, id.Value);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.AssertionIDRef, Saml2Constants.Namespace, id.Value);
 
             // <AssertionURIRef> 0-OO
             foreach (Uri uri in advice.AssertionUriReferences)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AssertionURIRef, Saml2Constants.Namespace, uri.OriginalString);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.AssertionURIRef, Saml2Constants.Namespace, uri.OriginalString);
 
             // <Assertion> 0-OO
             foreach (Saml2Assertion assertion in advice.Assertions)
@@ -1520,7 +1543,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
             }
 
             // <Assertion>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Assertion, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Assertion, Saml2Constants.Namespace);
 
             // @ID - required
             writer.WriteAttributeString(Saml2Constants.Attributes.ID, assertion.Id.Value);
@@ -1573,7 +1596,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(attribute));
 
             // <Attribute>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Attribute, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Attribute, Saml2Constants.Namespace);
 
             // @Name - required
             writer.WriteAttributeString(Saml2Constants.Attributes.Name, attribute.Name);
@@ -1588,7 +1611,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
 
             // @OriginalIssuer - optional
             if (attribute.OriginalIssuer != null )
-                writer.WriteAttributeString(Saml2Constants.Attributes.OriginalIssuer, attribute.OriginalIssuer);
+                writer.WriteAttributeString(Saml2Constants.Attributes.OriginalIssuer, Saml2Constants.ClaimType2009Namespace, attribute.OriginalIssuer);
 
             string xsiTypePrefix = null;
             string xsiTypeSuffix = null;
@@ -1604,7 +1627,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
             // <AttributeValue> 0-OO (nillable)
             foreach (string value in attribute.Values)
             {
-                writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AttributeValue, Saml2Constants.Namespace);
+                writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.AttributeValue, Saml2Constants.Namespace);
 
                 if (value == null)
                 {
@@ -1648,7 +1671,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogWriteException(LogMessages.IDX13129);
 
             // <AttributeStatement>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AttributeStatement, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.AttributeStatement, Saml2Constants.Namespace);
 
             // <Attribute> 1-OO
             foreach (Saml2Attribute attribute in statement.Attributes)
@@ -1679,11 +1702,11 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogReadException(LogMessages.IDX13130);
 
             // <AudienceRestriction>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AudienceRestriction, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.AudienceRestriction, Saml2Constants.Namespace);
 
             // <Audience> - 1-OO
             foreach (string audience in audienceRestriction.Audiences)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Audience, Saml2Constants.Namespace, audience);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.Audience, Saml2Constants.Namespace, audience);
 
             // </AudienceRestriction>
             writer.WriteEndElement();
@@ -1707,19 +1730,19 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogWriteException(LogMessages.IDX13149);
 
             // <AuthnContext>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AuthnContext, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.AuthnContext, Saml2Constants.Namespace);
 
             // <AuthnContextClassReference> 0-1
             if (authenticationContext.ClassReference != null)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AuthnContextClassRef, Saml2Constants.Namespace, authenticationContext.ClassReference.OriginalString);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.AuthnContextClassRef, Saml2Constants.Namespace, authenticationContext.ClassReference.OriginalString);
 
             // <AuthnContextDeclRef> 0-1
             if (authenticationContext.DeclarationReference != null)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AuthnContextDeclRef, Saml2Constants.Namespace, authenticationContext.DeclarationReference.OriginalString);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.AuthnContextDeclRef, Saml2Constants.Namespace, authenticationContext.DeclarationReference.OriginalString);
 
             // <AuthenticatingAuthority> 0-OO
             foreach (var authority in authenticationContext.AuthenticatingAuthorities)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AuthenticatingAuthority, Saml2Constants.Namespace, authority.OriginalString);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.AuthenticatingAuthority, Saml2Constants.Namespace, authority.OriginalString);
 
             // </AuthnContext>
             writer.WriteEndElement();
@@ -1741,7 +1764,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(statement));
 
             // <AuthnStatement>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AuthnStatement, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.AuthnStatement, Saml2Constants.Namespace);
 
             // @AuthnInstant - required
             writer.WriteAttributeString(Saml2Constants.Attributes.AuthnInstant, XmlConvert.ToString(statement.AuthenticationInstant.ToUniversalTime(), Saml2Constants.GeneratedDateTimeFormat));
@@ -1795,7 +1818,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogWriteException(LogMessages.IDX13900, Saml2Constants.Attributes.Resource, nameof(statement.Resource));
 
             // <AuthzDecisionStatement>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AuthzDecisionStatement, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.AuthzDecisionStatement, Saml2Constants.Namespace);
 
             // @Decision - required
             writer.WriteAttributeString(Saml2Constants.Attributes.Decision, statement.Decision.ToString());
@@ -1831,7 +1854,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(conditions));
 
             // <Conditions>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Conditions, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Conditions, Saml2Constants.Namespace);
 
             // @NotBefore - optional
             if (conditions.NotBefore.HasValue)
@@ -1848,7 +1871,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
             // <OneTimeUse> - limited to one in SAML spec
             if (conditions.OneTimeUse)
             {
-                writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.OneTimeUse, Saml2Constants.Namespace);
+                writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.OneTimeUse, Saml2Constants.Namespace);
                 writer.WriteEndElement();
             }
 
@@ -1882,15 +1905,15 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogWriteException(LogMessages.IDX13902);
 
             // <Evidence>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Evidence, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Evidence, Saml2Constants.Namespace);
 
             // <AssertionIDRef> 0-OO
             foreach (Saml2Id id in evidence.AssertionIdReferences)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AssertionIDRef, Saml2Constants.Namespace, id.Value);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.AssertionIDRef, Saml2Constants.Namespace, id.Value);
 
             // <AssertionURIRef> 0-OO
             foreach (Uri uri in evidence.AssertionUriReferences)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.AssertionURIRef, Saml2Constants.Namespace, uri.OriginalString);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.AssertionURIRef, Saml2Constants.Namespace, uri.OriginalString);
 
             // <Assertion> 0-OO
             foreach (Saml2Assertion assertion in evidence.Assertions)
@@ -1916,7 +1939,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(nameIdentifier));
 
             // <Issuer>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Issuer, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Issuer, Saml2Constants.Namespace);
 
             WriteNameIdType(writer, nameIdentifier);
 
@@ -1942,7 +1965,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
             if (nameIdentifier.EncryptingCredentials != null)
                 throw LogExceptionMessage(new NotSupportedException(LogMessages.IDX13304));
 
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.NameID, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.NameID, Saml2Constants.Namespace);
             this.WriteNameIdType(writer, nameIdentifier);
             writer.WriteEndElement();
         }
@@ -1999,7 +2022,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
             if (proxyRestriction == null)
                 throw LogArgumentNullException(nameof(proxyRestriction));
 
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.ProxyRestricton, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.ProxyRestricton, Saml2Constants.Namespace);
 
             // @Count - optional
             if (proxyRestriction.Count != null)
@@ -2007,7 +2030,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
 
             // <Audience> - 0-OO
             foreach (Uri uri in proxyRestriction.Audiences)
-                writer.WriteElementString(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Audience, uri.OriginalString);
+                writer.WriteElementString(PreferredPrefix, Saml2Constants.Elements.Audience, uri.OriginalString);
 
             writer.WriteEndElement();
         }
@@ -2069,7 +2092,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogExceptionMessage(new Saml2SecurityTokenException(FormatInvariant(LogMessages.IDX13305, subject)));
 
             // <Subject>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.Subject, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.Subject, Saml2Constants.Namespace);
 
             // no attributes
 
@@ -2105,7 +2128,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(subjectConfirmation.Method.OriginalString));
 
             // <SubjectConfirmation>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.SubjectConfirmation, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.SubjectConfirmation, Saml2Constants.Namespace);
 
             // @Method - required
             writer.WriteAttributeString(Saml2Constants.Attributes.Method, subjectConfirmation.Method.OriginalString);
@@ -2140,7 +2163,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(subjectConfirmationData));
 
             // <SubjectConfirmationData>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.SubjectConfirmationData, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.SubjectConfirmationData, Saml2Constants.Namespace);
 
             // @attributes
 
@@ -2192,7 +2215,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 throw LogArgumentNullException(nameof(subjectLocality));
 
             // <SubjectLocality>
-            writer.WriteStartElement(Saml2Constants.PreferredPrefix, Saml2Constants.Elements.SubjectLocality, Saml2Constants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, Saml2Constants.Elements.SubjectLocality, Saml2Constants.Namespace);
 
             // @Address - optional
             if (null != subjectLocality.Address)

@@ -43,13 +43,30 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
     {
 
         private DSigSerializer _dsigSerializer = DSigSerializer.Default;
+        private string _preferredPrefix = Prefixes.Fed;
 
         /// <summary>
         /// Metadata serializer for WsFed.
         /// </summary>
         public WsFederationMetadataSerializer() { }
 
-#region Read Metadata
+        /// <summary>
+        /// Gets or sets the prefix to use when writing xml.
+        /// </summary>
+        public string PreferredPrefix
+        {
+            get => _preferredPrefix;
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                    throw LogExceptionMessage(new ArgumentNullException(nameof(value)));
+
+                _preferredPrefix = value;
+            }
+        }
+
+
+        #region Read Metadata
 
         /// <summary>
         /// Read metadata and create the corresponding <see cref="WsFederationConfiguration"/>.
@@ -328,8 +345,8 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
             // <RoleDescriptor>
             writer.WriteStartElement(Prefixes.Md, Elements.RoleDescriptor, Namespaces.MetadataNamespace);
             writer.WriteAttributeString(Xmlns, Prefixes.Xsi, null, XmlSignatureConstants.XmlSchemaNamespace);
-            writer.WriteAttributeString(Xmlns, Prefixes.Fed, null, Namespaces.FederationNamespace);
-            writer.WriteAttributeString(Prefixes.Xsi, Attributes.Type, null, Prefixes.Fed + ":" + Types.SecurityTokenServiceType);
+            writer.WriteAttributeString(Xmlns, PreferredPrefix, null, Namespaces.FederationNamespace);
+            writer.WriteAttributeString(Prefixes.Xsi, Attributes.Type, null, PreferredPrefix + ":" + Types.SecurityTokenServiceType);
             writer.WriteAttributeString(Attributes.ProtocolSupportEnumeration, Namespaces.FederationNamespace);
 
             // write the key infos
@@ -347,7 +364,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
             }
 
             // <fed:PassiveRequestorEndpoint>
-            writer.WriteStartElement(Prefixes.Fed, Elements.PassiveRequestorEndpoint, Namespaces.FederationNamespace);
+            writer.WriteStartElement(PreferredPrefix, Elements.PassiveRequestorEndpoint, Namespaces.FederationNamespace);
 
             // <wsa:EndpointReference xmlns:wsa=""http://www.w3.org/2005/08/addressing"">
             writer.WriteStartElement(Prefixes.Wsa, Elements.EndpointReference, Namespaces.AddressingNamspace);

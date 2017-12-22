@@ -384,7 +384,7 @@ namespace Microsoft.IdentityModel.Tests
         {
             get
             {
-                return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust = ""http://docs.oasis-open.org/ws-sx/ws-trust/200512""><trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken>dummy</trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse></trust:RequestSecurityTokenResponseCollection>";
+                return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust = ""http://docs.oasis-open.org/ws-sx/ws-trust/200512""><trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken><token>dummy</token></trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse></trust:RequestSecurityTokenResponseCollection>";
             }
         }
 
@@ -392,7 +392,7 @@ namespace Microsoft.IdentityModel.Tests
         {
             get
             {
-                return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust = ""http://docs.oasis-open.org/ws-sx/ws-trust/200802""><trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken>dummy</trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse></trust:RequestSecurityTokenResponseCollection>";
+                return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust = ""http://docs.oasis-open.org/ws-sx/ws-trust/200802""><trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken><token>dummy</token></trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse></trust:RequestSecurityTokenResponseCollection>";
             }
         }
 
@@ -400,7 +400,7 @@ namespace Microsoft.IdentityModel.Tests
         {
             get
             {
-                return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust=""unsupported""><trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken>dummy</trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse></trust:RequestSecurityTokenResponseCollection>";
+                return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust=""unsupported""><trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken><token>dummy</token></trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse></trust:RequestSecurityTokenResponseCollection>";
             }
         }
 
@@ -409,8 +409,8 @@ namespace Microsoft.IdentityModel.Tests
             get
             {
                 return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust = ""http://docs.oasis-open.org/ws-sx/ws-trust/200512"">
-                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken>dummy</trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
-                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken>dummy</trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
+                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken><token>dummy</token></trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
+                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken><token>dummy</token></trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
                          </trust:RequestSecurityTokenResponseCollection>";
             }
         }
@@ -420,8 +420,8 @@ namespace Microsoft.IdentityModel.Tests
             get
             {
                 return @"<trust:RequestSecurityTokenResponseCollection xmlns:trust = ""http://docs.oasis-open.org/ws-sx/ws-trust/200802"">
-                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken>dummy</trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
-                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken>dummy</trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
+                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken><token>dummy</token></trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
+                            <trust:RequestSecurityTokenResponse><trust:RequestedSecurityToken><token>dummy</token></trust:RequestedSecurityToken></trust:RequestSecurityTokenResponse>
                          </trust:RequestSecurityTokenResponseCollection>";
             }
         }
@@ -467,7 +467,7 @@ namespace Microsoft.IdentityModel.Tests
         {
             get
             {
-                return "dummy";
+                return "<token>dummy</token>";
             }
         }
 

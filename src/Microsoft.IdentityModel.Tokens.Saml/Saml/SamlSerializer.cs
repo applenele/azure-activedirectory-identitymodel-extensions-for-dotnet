@@ -40,12 +40,28 @@ namespace Microsoft.IdentityModel.Tokens.Saml
     public class SamlSerializer
     {
         private DSigSerializer _dsigSerializer = DSigSerializer.Default;
+        private string _preferredPrefix = SamlConstants.PreferredPrefix;
 
         /// <summary>
         /// Instantiates a new instance of <see cref="SamlSerializer"/>.
         /// </summary>
         public SamlSerializer()
         {
+        }
+
+        /// <summary>
+        /// Gets or sets the prefix to use when writing xml.
+        /// </summary>
+        public string PreferredPrefix
+        {
+            get => _preferredPrefix;
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                    throw LogExceptionMessage(new ArgumentNullException(nameof(value)));
+
+                _preferredPrefix = value;
+            }
         }
 
         /// <summary>
@@ -335,6 +351,9 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 string originalIssuer = reader.GetAttribute(SamlConstants.Attributes.OriginalIssuer, SamlConstants.ClaimType2009Namespace);
                 if (originalIssuer == null)
                     originalIssuer = reader.GetAttribute(SamlConstants.Attributes.OriginalIssuer, SamlConstants.MsIdentityNamespaceUri);
+
+                if (originalIssuer == null)
+                    originalIssuer = reader.GetAttribute(SamlConstants.Attributes.OriginalIssuer);
 
                 if (originalIssuer != null)
                     attribute.OriginalIssuer = originalIssuer;
@@ -967,7 +986,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
             if (action == null)
                 throw LogArgumentNullException(nameof(action));
 
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.Action, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.Action, SamlConstants.Namespace);
             if (!string.IsNullOrEmpty(action.Namespace.OriginalString))
             {
                 writer.WriteStartAttribute(SamlConstants.Attributes.ActionNamespaceAttribute, null);
@@ -995,11 +1014,11 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogArgumentNullException(nameof(advice));
 
             // <Advice>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.Advice, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.Advice, SamlConstants.Namespace);
 
             // <AssertionIdReferences> 0-OO
             foreach (var reference in advice.AssertionIdReferences)
-                writer.WriteElementString(SamlConstants.PreferredPrefix, SamlConstants.Elements.AssertionIDReference, SamlConstants.Namespace, reference);
+                writer.WriteElementString(PreferredPrefix, SamlConstants.Elements.AssertionIDReference, SamlConstants.Namespace, reference);
 
             // <Assertion> 0-OO
             foreach (var assertion in advice.Assertions)
@@ -1050,16 +1069,16 @@ namespace Microsoft.IdentityModel.Tokens.Saml
             try
             {
                 // <Assertion>
-                writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.Assertion, SamlConstants.Namespace);
-
-                // @AssertionID
-                writer.WriteAttributeString(SamlConstants.Attributes.AssertionID, assertion.AssertionId);
+                writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.Assertion, SamlConstants.Namespace);
 
                 // @MajorVersion
                 writer.WriteAttributeString(SamlConstants.Attributes.MajorVersion, SamlConstants.MajorVersionValue);
 
                 // @MinorVersion
                 writer.WriteAttributeString(SamlConstants.Attributes.MinorVersion, SamlConstants.MinorVersionValue);
+
+                // @AssertionID
+                writer.WriteAttributeString(SamlConstants.Attributes.AssertionID, assertion.AssertionId);
 
                 // @Issuer
                 writer.WriteAttributeString(SamlConstants.Attributes.Issuer, assertion.Issuer);
@@ -1107,7 +1126,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogArgumentNullException(nameof(attribute));
 
             // <Attribute>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.Attribute, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.Attribute, SamlConstants.Namespace);
 
             // @AttributeName
             writer.WriteAttributeString(SamlConstants.Attributes.AttributeName, attribute.Name);
@@ -1115,7 +1134,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
 
             // @OriginalIssuer - optional
             if (attribute.OriginalIssuer != null)
-                writer.WriteAttributeString(SamlConstants.Attributes.OriginalIssuer, attribute.OriginalIssuer);
+                writer.WriteAttributeString(SamlConstants.Attributes.OriginalIssuer, SamlConstants.ClaimType2009Namespace, attribute.OriginalIssuer);
 
             foreach (var value in attribute.Values)
             {
@@ -1123,7 +1142,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 if (string.IsNullOrEmpty(value))
                     throw LogWriteException(LogMessages.IDX11506);
 
-                writer.WriteElementString(SamlConstants.PreferredPrefix, SamlConstants.Elements.AttributeValue, SamlConstants.Namespace, value);
+                writer.WriteElementString(PreferredPrefix, SamlConstants.Elements.AttributeValue, SamlConstants.Namespace, value);
             }
 
             // </Attribute>
@@ -1147,7 +1166,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogArgumentNullException(nameof(statement));
 
             // <AttributeStatement>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.AttributeStatement, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.AttributeStatement, SamlConstants.Namespace);
 
             // <Subject>
             WriteSubject(writer, statement.Subject);
@@ -1177,13 +1196,13 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogArgumentNullException(nameof(audienceRestriction));
             
             // <AudienceRestrictionCondition>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.AudienceRestrictionCondition, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.AudienceRestrictionCondition, SamlConstants.Namespace);
 
             // <Audience> - 1-OO
             foreach (var audience in audienceRestriction.Audiences)
             {
                 if (audience != null)
-                    writer.WriteElementString(SamlConstants.PreferredPrefix, SamlConstants.Elements.Audience, SamlConstants.Namespace, audience.OriginalString);
+                    writer.WriteElementString(PreferredPrefix, SamlConstants.Elements.Audience, SamlConstants.Namespace, audience.OriginalString);
             }
 
             // </AudienceRestrictionCondition>
@@ -1209,7 +1228,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogWriteException(LogMessages.IDX11800, SamlConstants.Elements.AuthenticationStatement, statement.GetType(), SamlConstants.Attributes.AuthenticationMethod);
 
             // <AuthnStatement>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.AuthenticationStatement, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.AuthenticationStatement, SamlConstants.Namespace);
 
             // @AuthenticationMethod - required
             writer.WriteAttributeString(SamlConstants.Attributes.AuthenticationMethod, statement.AuthenticationMethod);
@@ -1223,7 +1242,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
             if ((!string.IsNullOrEmpty(statement.IPAddress)) || (!string.IsNullOrEmpty(statement.DnsAddress)))
             {
                 // <SubjectLocality>
-                writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.SubjectLocality, SamlConstants.Namespace);
+                writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.SubjectLocality, SamlConstants.Namespace);
 
                 // @IPAddress - optional
                 if (!string.IsNullOrEmpty(statement.IPAddress))
@@ -1272,7 +1291,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogWriteException(LogMessages.IDX11800, SamlConstants.Elements.AuthorityBinding, authorityBinding.GetType(), "Location");
 
             // <AuthorityBinding>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.AuthorityBinding, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.AuthorityBinding, SamlConstants.Namespace);
 
             // @AuthorityKind
             string prefix = null;
@@ -1282,7 +1301,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 prefix = writer.LookupPrefix(authorityBinding.AuthorityKind.Namespace);
             }
 
-            writer.WriteStartAttribute(SamlConstants.PreferredPrefix, SamlConstants.Attributes.AuthorityKind, null);
+            writer.WriteStartAttribute(PreferredPrefix, SamlConstants.Attributes.AuthorityKind, null);
             if (string.IsNullOrEmpty(prefix))
                 writer.WriteString(authorityBinding.AuthorityKind.Name);
             else
@@ -1327,7 +1346,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogWriteException(LogMessages.IDX11900, SamlConstants.Attributes.Resource, statement.GetType(), nameof(statement.Resource));
 
             // <AuthorizationDecisionStatement>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.AuthorizationDecisionStatement, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.AuthorizationDecisionStatement, SamlConstants.Namespace);
 
             // @Decision - required
             writer.WriteAttributeString(SamlConstants.Attributes.Decision, statement.Decision);
@@ -1382,7 +1401,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogArgumentNullException(nameof(conditions));
 
             // <Conditions>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.Conditions, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.Conditions, SamlConstants.Namespace);
 
             // @NotBefore
             if (conditions.NotBefore != DateTimeUtil.GetMinValue(DateTimeKind.Utc))
@@ -1416,7 +1435,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogArgumentNullException(nameof(condition));
 
             // <DoNotCacheCondition>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.DoNotCacheCondition, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.DoNotCacheCondition, SamlConstants.Namespace);
 
             // </DoNotCacheCondition>
             writer.WriteEndElement();
@@ -1442,11 +1461,11 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogWriteException(LogMessages.IDX11902);
 
             // <Evidence>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.Evidence, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.Evidence, SamlConstants.Namespace);
 
             // <AssertionIDReference> 0-OO
             foreach (var assertionId in evidence.AssertionIDReferences)
-                writer.WriteElementString(SamlConstants.PreferredPrefix, SamlConstants.Elements.AssertionIDReference, SamlConstants.Namespace, assertionId);
+                writer.WriteElementString(PreferredPrefix, SamlConstants.Elements.AssertionIDReference, SamlConstants.Namespace, assertionId);
 
             // <Assertion> 0-OO
             foreach (var assertion in evidence.Assertions)
@@ -1501,12 +1520,12 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 throw LogWriteException(LogMessages.IDX11518);
 
             // <Subject>
-            writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.Subject, SamlConstants.Namespace);
+            writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.Subject, SamlConstants.Namespace);
 
             if (!string.IsNullOrEmpty(subject.Name))
             {
                 // <NameIdentifier>
-                writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.NameIdentifier, SamlConstants.Namespace);
+                writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.NameIdentifier, SamlConstants.Namespace);
 
                 // @Format
                 if (!string.IsNullOrEmpty(subject.NameFormat))
@@ -1526,14 +1545,14 @@ namespace Microsoft.IdentityModel.Tokens.Saml
             if (subject.ConfirmationMethods.Count > 0)
             {
                 // <SubjectConfirmation>
-                writer.WriteStartElement(SamlConstants.PreferredPrefix, SamlConstants.Elements.SubjectConfirmation, SamlConstants.Namespace);
+                writer.WriteStartElement(PreferredPrefix, SamlConstants.Elements.SubjectConfirmation, SamlConstants.Namespace);
 
                 // <ConfirmationMethod> 1-OO
                 foreach (string method in subject.ConfirmationMethods)
-                    writer.WriteElementString(SamlConstants.PreferredPrefix, SamlConstants.Elements.ConfirmationMethod, SamlConstants.Namespace, method);
+                    writer.WriteElementString(PreferredPrefix, SamlConstants.Elements.ConfirmationMethod, SamlConstants.Namespace, method);
 
                 if (!string.IsNullOrEmpty(subject.ConfirmationData))
-                    writer.WriteElementString(SamlConstants.PreferredPrefix, SamlConstants.Elements.SubjectConfirmationData, SamlConstants.Namespace, subject.ConfirmationData);
+                    writer.WriteElementString(PreferredPrefix, SamlConstants.Elements.SubjectConfirmationData, SamlConstants.Namespace, subject.ConfirmationData);
 
                 // TODO - proof key
                 // if (subject.Key != null)

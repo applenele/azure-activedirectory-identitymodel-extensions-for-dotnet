@@ -148,6 +148,18 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         /// <exception cref="ArgumentNullException">If 'tokenDescriptor' is null.</exception>
         public override SecurityToken CreateToken(SecurityTokenDescriptor tokenDescriptor)
         {
+            return CreateToken(tokenDescriptor, null);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="Saml2SecurityToken"/>.
+        /// </summary>
+        /// <param name="tokenDescriptor">The <see cref="SecurityTokenDescriptor"/> that has creation information.</param>
+        /// <param name="authenticationInformation">additional information for creating a <see cref="Saml2AuthenticationStatement"/>.</param>
+        /// <returns>A <see cref="SecurityToken"/> instance.</returns>
+        /// <exception cref="ArgumentNullException">If 'tokenDescriptor' is null.</exception>
+        public virtual SecurityToken CreateToken(SecurityTokenDescriptor tokenDescriptor, AuthenticationInformation authenticationInformation)
+        {
             if (tokenDescriptor == null)
                 throw LogArgumentNullException(nameof(tokenDescriptor));
 
@@ -161,7 +173,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
             };
 
             // Statements
-            IEnumerable<Saml2Statement> statements = CreateStatements(tokenDescriptor);
+            IEnumerable<Saml2Statement> statements = CreateStatements(tokenDescriptor, authenticationInformation);
             if (statements != null)
             {
                 foreach (var statement in statements)
@@ -702,7 +714,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 {
                     switch (claim.Type)
                     {
-                        // TODO - where are these claims added?
+                        // TODO - should these really be filtered?
                         case ClaimTypes.AuthenticationInstant:
                         case ClaimTypes.AuthenticationMethod:
                         case ClaimTypes.NameIdentifier:
@@ -816,84 +828,77 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         /// <exception cref="ArgumentNullException">if <paramref name="tokenDescriptor"/> is null.</exception>
         protected virtual IEnumerable<Saml2Statement> CreateStatements(SecurityTokenDescriptor tokenDescriptor)
         {
+            return CreateStatements(tokenDescriptor, null);
+        }
+
+        /// <summary>
+        /// Creates an <see cref="IEnumerable{T}"/> of <see cref="Saml2Statement"/> to be included in the assertion.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Statements are not required in a SAML2 assertion. This method may
+        /// return an empty collection.
+        /// </para>
+        /// </remarks>
+        /// <param name="tokenDescriptor">The <see cref="SecurityTokenDescriptor"/> that contains information on creating the <see cref="Saml2Statement"/>.</param>
+        /// <param name="authenticationInformation">additional information used when creating a <see cref="Saml2AuthenticationStatement"/>.</param>
+        /// <returns>An enumeration of Saml2Statements.</returns>
+        /// <exception cref="ArgumentNullException">if <paramref name="tokenDescriptor"/> is null.</exception>
+        protected virtual IEnumerable<Saml2Statement> CreateStatements(SecurityTokenDescriptor tokenDescriptor, AuthenticationInformation authenticationInformation)
+        {
             if (tokenDescriptor == null)
                 throw LogArgumentNullException(nameof(tokenDescriptor));
 
             var statements = new Collection<Saml2Statement>();
+
             var attributeStatement = CreateAttributeStatement(tokenDescriptor);
             if (attributeStatement != null)
                 statements.Add(attributeStatement);
 
-            // TODO - figure out how to set the AuthenticationInfo
-            //var authenticationStatement = this.CreateAuthenticationStatement(tokenDescriptor.AuthenticationInfo, tokenDescriptor);
-            //if (authenticationStatement != null)
-            //    statements.Add(authenticationStatement);
+            var authenticationStatement = CreateAuthenticationStatement(authenticationInformation);
+            if (authenticationStatement != null)
+                statements.Add(authenticationStatement);
+
+            var authorizationDecisionStatement = CreateAuthorizationDecisionStatement(tokenDescriptor);
+            if (authorizationDecisionStatement != null)
+                statements.Add(authorizationDecisionStatement);
 
             return statements;
         }
 
         /// <summary>
-        /// Given an AuthenticationInformation object, this routine creates a Saml2AuthenticationStatement
-        /// to be added to the Saml2Assertion that is produced by the factory.
+        /// Creates a Saml2AuthenticationStatement
         /// </summary>
-        /// <param name="authInfo">
-        /// An AuthenticationInformation object containing the state to be wrapped as a Saml2AuthenticationStatement
-        /// object.
-        /// </param>
-        /// <param name="tokenDescriptor">The token descriptor.</param>
-        /// <returns>
-        /// The Saml2AuthenticationStatement to add to the assertion being created or null to ignore the AuthenticationInformation
-        /// being wrapped as a statement.
-        /// </returns>
-        protected virtual Saml2AuthenticationStatement CreateAuthenticationStatement(AuthenticationInformation authInfo, SecurityTokenDescriptor tokenDescriptor)
+        /// <param name="authenticationInformation">authenticationInformation object containing the state to be wrapped as a Saml2AuthenticationStatement object.</param>
+        /// <returns>A <see cref="Saml2AuthenticationStatement"/></returns>
+        protected virtual Saml2AuthenticationStatement CreateAuthenticationStatement(AuthenticationInformation authenticationInformation)
         {
-            if (tokenDescriptor == null)
-                throw LogArgumentNullException(nameof(tokenDescriptor));
-
-            if (tokenDescriptor.Subject == null)
+            if (authenticationInformation == null)
                 return null;
 
-            Uri authenticationMethod = null;
-            string authenticationInstant = null;
+            var authContext = new Saml2AuthenticationContext(authenticationInformation.AuthenticationMethod);
+            var authenticationStatement = new Saml2AuthenticationStatement(authContext, authenticationInformation.AuthenticationInstant);
 
-            // Search for an Authentication Claim.
-            IEnumerable<Claim> claimCollection = from claim in tokenDescriptor.Subject.Claims where claim.Type == ClaimTypes.AuthenticationMethod select claim;
-            if (claimCollection.Count<Claim>() > 0)
-            {
-                // We support only one authentication statement and hence we just pick the first authentication type
-                // claim found in the claim collection. Since the spec allows multiple Auth Statements, 
-                // we do not throw an error.
-                authenticationMethod = new Uri(claimCollection.First<Claim>().Value);
-            }
+            if (!string.IsNullOrEmpty(authenticationInformation.DnsName) || !string.IsNullOrEmpty(authenticationInformation.Address))
+                authenticationStatement.SubjectLocality = new Saml2SubjectLocality(authenticationInformation.Address, authenticationInformation.DnsName);
 
-            claimCollection = from claim in tokenDescriptor.Subject.Claims where claim.Type == ClaimTypes.AuthenticationInstant select claim;
+            if (!string.IsNullOrEmpty(authenticationInformation.Session))
+                authenticationStatement.SessionIndex = authenticationInformation.Session;
 
-            if (claimCollection.Count<Claim>() > 0)
-                authenticationInstant = claimCollection.First<Claim>().Value;
+            authenticationStatement.SessionNotOnOrAfter = authenticationInformation.NotOnOrAfter;
 
-            if (authenticationMethod == null && authenticationInstant == null)
-                return null;
-            else if (authenticationMethod == null)
-                throw LogExceptionMessage(new Saml2SecurityTokenException(LogMessages.IDX13307));
-            else if (authenticationInstant == null)
-                throw LogExceptionMessage(new Saml2SecurityTokenException(LogMessages.IDX13308));
+            return authenticationStatement;
+        }
 
-            var authContext = new Saml2AuthenticationContext(authenticationMethod);
-            var authInstantTime = DateTime.ParseExact(authenticationInstant, Saml2Constants.AcceptedDateTimeFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None).ToUniversalTime();
-            var authnStatement = new Saml2AuthenticationStatement(authContext, authInstantTime);
-
-            if (authInfo != null)
-            {
-                if (!string.IsNullOrEmpty(authInfo.DnsName) || !string.IsNullOrEmpty(authInfo.Address))
-                    authnStatement.SubjectLocality = new Saml2SubjectLocality(authInfo.Address, authInfo.DnsName);
-
-                if (!string.IsNullOrEmpty(authInfo.Session))
-                    authnStatement.SessionIndex = authInfo.Session;
-
-                authnStatement.SessionNotOnOrAfter = authInfo.NotOnOrAfter;
-            }
-
-            return authnStatement;
+        /// <summary>
+        /// Creates a <see cref="Saml2AuthorizationDecisionStatement"/> from a <see cref="SecurityTokenDescriptor"/>.
+        /// </summary>
+        /// <param name="tokenDescriptor">The token descriptor.</param>
+        /// <returns>A <see cref="Saml2AuthorizationDecisionStatement"/>.</returns>
+        /// <remarks>By default a null statement is returned. Override to return a <see cref="Saml2AuthorizationDecisionStatement"/> to be added to a <see cref="Saml2SecurityToken"/>.</remarks>
+        public virtual Saml2AuthorizationDecisionStatement CreateAuthorizationDecisionStatement(SecurityTokenDescriptor tokenDescriptor)
+        {
+            return null;
         }
 
         /// <summary>
@@ -1119,23 +1124,16 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         /// <param name="issuer">The issuer.</param>
         protected virtual void ProcessStatements(ICollection<Saml2Statement> statements, ClaimsIdentity identity, string issuer)
         {
-            var authnStatements = new Collection<Saml2AuthenticationStatement>();
             foreach (var statement in statements)
             {
                 if (statement is Saml2AttributeStatement attrStatement)
                     ProcessAttributeStatement(attrStatement, identity, issuer);
                 else if (statement is Saml2AuthenticationStatement authnStatement)
-                    authnStatements.Add(authnStatement);
+                    ProcessAuthenticationStatement(authnStatement, identity, issuer);
                 else if (statement is Saml2AuthorizationDecisionStatement authzStatement)
                     ProcessAuthorizationDecisionStatement(authzStatement, identity, issuer);
-
-                // We don't process custom statements. Just fall through.
-            }
-
-            foreach (var authStatement in authnStatements)
-            {
-                if (authStatement != null)
-                    ProcessAuthenticationStatement(authStatement, identity, issuer);
+                else
+                    LogWarning(LogMessages.IDX13516, this.GetType());
             }
         }
 
