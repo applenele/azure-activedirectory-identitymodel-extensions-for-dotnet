@@ -34,7 +34,7 @@ using static Microsoft.IdentityModel.Logging.LogHelper;
 namespace Microsoft.IdentityModel.Tokens.Saml2
 {
     /// <summary>
-    /// Reads and writes Saml2 Assertions and tokens
+    /// Reads and writes a <see cref="Saml2Assertion"/> or <see cref="Saml2SecurityToken"/>
     /// </summary>
     public class Saml2Serializer
     {
@@ -79,6 +79,11 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         /// </summary>
         /// <param name="reader">A <see cref="XmlDictionaryReader"/> positioned at a <see cref="Saml2Action"/> element.</param>
         /// <returns>A <see cref="Saml2Action"/> instance.</returns>
+        /// <exception cref="ArgumentNullException">If <paramref name="reader"/> is null.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If <paramref name="reader"/> is not positioned at a Saml2Action.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If <paramref name="reader"/> is positioned at an empty element.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If Saml2Action is missing @namespace.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If Saml2Action is not an Absolute Uri.</exception>
         protected virtual Saml2Action ReadAction(XmlDictionaryReader reader)
         {
             XmlUtil.CheckReaderOnEntry(reader, Saml2Constants.Elements.Action, Saml2Constants.Namespace);
@@ -126,6 +131,8 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         /// </remarks>
         /// <param name="reader">A <see cref="XmlReader"/> positioned at a <see cref="Saml2Advice"/> element.</param>
         /// <returns>A <see cref="Saml2Advice"/> instance.</returns>
+        /// <exception cref="ArgumentNullException">If <paramref name="reader"/> is null.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If <paramref name="reader"/> is not positioned at a Saml2Advice.</exception>
         protected virtual Saml2Advice ReadAdvice(XmlDictionaryReader reader)
         {
             XmlUtil.CheckReaderOnEntry(reader, Saml2Constants.Elements.Advice, Saml2Constants.Namespace);
@@ -176,6 +183,11 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         /// <param name="reader">A <see cref="XmlReader"/> positioned at a <see cref="Saml2Assertion"/> element.</param>
         /// <exception cref="ArgumentNullException">if <paramref name="reader"/> is null.</exception>
         /// <exception cref="NotSupportedException">if assertion is encrypted.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If <paramref name="reader"/> is not positioned at a Saml2Assertion.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If Version is not '2.0'.</exception>
+        /// <exception cref="Saml2SecurityTokenReadException">If 'Id' is missing.</exception>>
+        /// <exception cref="Saml2SecurityTokenReadException">If 'IssueInstant' is missing.</exception>>
+        /// <exception cref="Saml2SecurityTokenReadException">If no statements are found.</exception>>
         /// <returns>A <see cref="Saml2Assertion"/> instance.</returns>
         public virtual Saml2Assertion ReadAssertion(XmlReader reader)
         {
@@ -285,7 +297,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         }
 
         /// <summary>
-        /// Reads the &lt;saml:Attribute> element.
+        /// Reads a <see cref="Saml2Attribute"/>.
         /// </summary>
         /// <remarks>
         /// The default implementation requires that the content of the
@@ -294,6 +306,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
         /// this method.
         /// </remarks>
         /// <param name="reader">An <see cref="XmlReader"/> positioned at a <see cref="Saml2Attribute"/> element.</param>
+        /// <exception cref="ArgumentNullException">If <paramref name="reader"/> is null.</exception>
         /// <returns>A <see cref="Saml2Attribute"/> instance.</returns>
         public virtual Saml2Attribute ReadAttribute(XmlDictionaryReader reader)
         {
@@ -1175,7 +1188,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 // @xsi:type
                 XmlUtil.ValidateXsiType(reader, Saml2Constants.Types.SubjectType, Saml2Constants.Namespace);
 
-                // TODO is the Read needed?
                 reader.Read();
 
                 // <NameID> | <EncryptedID> | <BaseID> 0-1
@@ -2278,7 +2290,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml2
                 if (string.IsNullOrEmpty(value))
                     throw LogReadException(LogMessages.IDX13136, element);
 
-                // TODO - kind can change.
                 if (requireUri && !CanCreateValidUri(value, kind))
                     throw LogReadException(LogMessages.IDX13107, element, value);
 

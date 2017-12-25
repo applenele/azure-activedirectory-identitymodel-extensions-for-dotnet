@@ -783,9 +783,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 // @xsi:type
                 XmlUtil.ValidateXsiType(reader, SamlConstants.Types.DoNotCacheConditionType, SamlConstants.Namespace);
 
-                // TODO what is this about
-                // saml:DoNotCacheCondition is a empty element. So just issue a read for
-                // the empty element.
                 if (reader.IsEmptyElement)
                 {
                     reader.MoveToContent();
@@ -905,7 +902,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                     if (!string.IsNullOrEmpty(nameQualifier))
                         subject.NameQualifier = nameQualifier;
 
-                    // TODO - check for empty element
                     reader.MoveToContent();
                     subject.Name = reader.ReadElementContentAsString();
 
@@ -1116,7 +1112,7 @@ namespace Microsoft.IdentityModel.Tokens.Saml
         /// <param name="attribute">The <see cref="SamlAttribute"/> to serialize.</param>
         /// <exception cref="ArgumentNullException">if <paramref name="writer"/> is null.</exception>
         /// <exception cref="ArgumentNullException">if <paramref name="attribute"/> is null.</exception>
-        /// <exception cref="SamlSecurityTokenWriteException">if any attibute values are null or emtpy.</exception>
+        /// <exception cref="SamlSecurityTokenWriteException">if any attribute values are null or empty.</exception>
         public virtual void WriteAttribute(XmlWriter writer, SamlAttribute attribute)
         {
             if (writer == null)
@@ -1553,9 +1549,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml
 
                 if (!string.IsNullOrEmpty(subject.ConfirmationData))
                     writer.WriteElementString(PreferredPrefix, SamlConstants.Elements.SubjectConfirmationData, SamlConstants.Namespace, subject.ConfirmationData);
-
-                // TODO - proof key
-                // if (subject.Key != null)
 
                 // </SubjectConfirmation>
                 writer.WriteEndElement();

@@ -29,7 +29,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
+//using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
@@ -253,7 +253,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml
             return null;
         }
 
-        // TODO - introduce a delegate to return the ns / name pair
         /// <summary>
         /// Generates a SamlAttribute from a claim.
         /// </summary>
@@ -415,9 +414,13 @@ namespace Microsoft.IdentityModel.Tokens.Saml
             var conditions = new SamlConditions();
             if (tokenDescriptor.NotBefore.HasValue)
                 conditions.NotBefore = tokenDescriptor.NotBefore.Value;
+            else if (SetDefaultTimesOnTokenCreation)
+                conditions.NotBefore = DateTime.UtcNow;
 
             if (tokenDescriptor.Expires.HasValue)
                 conditions.NotOnOrAfter = tokenDescriptor.Expires.Value;
+            else if (SetDefaultTimesOnTokenCreation)
+                conditions.NotOnOrAfter = DateTime.UtcNow + TimeSpan.FromMinutes(TokenLifetimeInMinutes);
 
             if (!string.IsNullOrEmpty(tokenDescriptor.Audience))
                 conditions.Conditions.Add(new SamlAudienceRestrictionCondition(new Uri(tokenDescriptor.Audience)));
@@ -499,7 +502,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml
                 }
             }
 
-            // TODO - handle these special claims
             if (identityClaim != null)
             {
                 samlSubject.Name = identityClaim.Value;
@@ -943,7 +945,6 @@ namespace Microsoft.IdentityModel.Tokens.Saml
 
             Validators.ValidateLifetime(securityToken.Assertion.Conditions.NotBefore, securityToken.Assertion.Conditions.NotOnOrAfter, securityToken, validationParameters);
 
-            // TODO - concat all the audiences together
             if (securityToken.Assertion.Conditions.Conditions.ElementAt(0) is SamlAudienceRestrictionCondition)
             {
                 foreach (var condition in securityToken.Assertion.Conditions.Conditions)
