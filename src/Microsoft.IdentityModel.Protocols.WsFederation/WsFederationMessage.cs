@@ -78,7 +78,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
         /// <summary>
         /// Creates a <see cref="WsFederationMessage"/> from the contents of a <see cref="Uri"/>.
         /// </summary>
-        /// <param name="uri"> uri string to extract parameters.</param>
+        /// <param name="uri">uri containing parameters.</param>
         /// <returns>An instance of <see cref="WsFederationMessage"/>.</returns>
         /// <remarks><see cref="WsFederationMessage"/>.IssuerAddress is NOT set/>. Parameters are parsed from <see cref="Uri.Query"/>.</remarks>
         public static WsFederationMessage FromUri(Uri uri)
@@ -86,9 +86,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
             LogHelper.LogVerbose(FormatInvariant(LogMessages.IDX22901, uri.ToString()));
 
             if (uri != null && uri.Query.Length > 1)
-            {
                 return FromQueryString(uri.Query.Substring(1));
-            }
 
             return new WsFederationMessage();
         }
@@ -101,14 +99,12 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
         {
             if (wsFederationMessage == null)
             {
-                LogHelper.LogWarning(FormatInvariant(LogMessages.IDX22000, "wsfederationMessage"));
+                LogHelper.LogWarning(FormatInvariant(LogMessages.IDX22000, nameof(wsFederationMessage)));
                 return;
             }
 
             foreach (KeyValuePair<string, string> keyValue in wsFederationMessage.Parameters)
-            {
                 SetParameter(keyValue.Key, keyValue.Value);
-            }
 
             IssuerAddress = wsFederationMessage.IssuerAddress;
         }
@@ -121,7 +117,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
         {
             if (parameters == null)
             {
-                LogHelper.LogWarning(FormatInvariant(LogMessages.IDX22000, "parameters"));
+                LogHelper.LogWarning(FormatInvariant(LogMessages.IDX22000, nameof(parameters)));
                 return;
             }
 
@@ -141,12 +137,10 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
 
         public string CreateSignInUrl()
         {
-            var wsFederationMessage = new WsFederationMessage(this)
+            return (new WsFederationMessage(this)
             {
                 Wa = WsFederationConstants.WsFederationActions.SignIn
-            };
-
-            return wsFederationMessage.BuildRedirectUrl();
+            }).BuildRedirectUrl();
         }
 
         /// <summary>
@@ -155,33 +149,30 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
         /// <returns>The uri to use for a redirect.</returns>
         public string CreateSignOutUrl()
         {
-            var wsFederationMessage = new WsFederationMessage(this)
+            return (new WsFederationMessage(this)
             {
                 Wa = WsFederationConstants.WsFederationActions.SignOut
-            };
-
-            return wsFederationMessage.BuildRedirectUrl();
+            }).BuildRedirectUrl();
         }
 
-        /// <summary>
-        /// Reads the 'wresult' and returns the embeded security token.
+                /// <summary>
+        /// Reads the 'wresult' and returns the embedded security token.
         /// </summary>
         /// <returns>the 'SecurityToken'.</returns>
         /// <exception cref="WsFederationException">if exception occurs while reading security token.</exception>
-        public virtual string GetToken()
+        public virtual string GetToken2()
         {
             if (Wresult == null)
             {
-                LogHelper.LogWarning(FormatInvariant(LogMessages.IDX22000, "wresult"));
+                LogHelper.LogWarning(FormatInvariant(LogMessages.IDX22000, nameof(Wresult)));
                 return null;
             }
 
             string token = null;
 
-            //using (var sr = new StringReader(Wresult))
-            using (XmlDictionaryReader xmlReader = XmlDictionaryReader.CreateTextReader(Encoding.UTF8.GetBytes(Wresult), XmlDictionaryReaderQuotas.Max))
+            using (var sr = new StringReader(Wresult))
             {
-                //XmlReader xmlReader = XmlReader.Create(sr);
+                var xmlReader = XmlReader.Create(sr);                
                 xmlReader.MoveToContent();
 
                 // Read <RequestSecurityTokenResponseCollection> for wstrust 1.3 and 1.4
@@ -204,37 +195,25 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
                         if (!XmlUtil.IsStartElement(xmlReader, WsTrustConstants.Elements.RequestedSecurityToken, WsTrustNamespaceList))
                         {
                             xmlReader.Skip();
+                            continue;
                         }
-                        else
+
+                        // Multiple tokens were found in the RequestSecurityTokenCollection. Only a single token is supported.
+                        if (token != null)
+                            throw new WsFederationException(LogMessages.IDX22903);
+
+                        xmlReader.ReadStartElement();
+                        using (var ms = new MemoryStream())
                         {
-                            // Multiple tokens were found in the RequestSecurityTokenCollection. Only a single token is supported.
-                            if (token != null)
-                                throw new WsFederationException(LogMessages.IDX22903);
-
-                            //xmlReader.ReadStartElement();
-
-                            using (var ms = new MemoryStream())
+                            using (var writer = XmlDictionaryWriter.CreateTextWriter(ms, Encoding.UTF8, false))
                             {
-                                using (var writer = XmlDictionaryWriter.CreateTextWriter(ms, Encoding.UTF8, false))
-                                {
-                                    writer.WriteNode(xmlReader, true);
-                                    writer.Flush();
-                                }
-
-                                ms.Seek(0, SeekOrigin.Begin);
-                                var tokenBytes = ms.ToArray();
-                                var tokenFromReader = Encoding.UTF8.GetString(tokenBytes);
-
-                             //   xmlReader.ReadEndElement();
-
-                                var memoryReader = XmlDictionaryReader.CreateTextReader(ms, Encoding.UTF8, XmlDictionaryReaderQuotas.Max, null);
-                                var dom = new XmlDocument()
-                                {
-                                    PreserveWhitespace = true
-                                };
-                                dom.Load(memoryReader);
-                                token = dom.DocumentElement.InnerXml;
+                                writer.WriteNode(xmlReader, true);
+                                writer.Flush();
                             }
+
+                            ms.Seek(0, SeekOrigin.Begin);
+                            var tokenBytes = ms.ToArray();
+                            token = Encoding.UTF8.GetString(tokenBytes);
                         }
                     }
 
@@ -244,31 +223,101 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
             }
 
             if (token == null)
-                throw new WsFederationException(LogMessages.IDX22902);
+                throw LogExceptionMessage(new WsFederationException(LogMessages.IDX22902));
 
             return token;
         }
 
         /// <summary>
-        /// Gets a boolean representating if the <see cref="WsFederationMessage"/> is a 'sign-in-message'.
+        /// Reads the 'wresult' and returns the embedded security token.
+        /// </summary>
+        /// <returns>the 'SecurityToken'.</returns>
+        /// <exception cref="WsFederationException">if exception occurs while reading security token.</exception>
+        public virtual string GetToken()
+        {
+            if (Wresult == null)
+            {
+                LogHelper.LogWarning(FormatInvariant(LogMessages.IDX22000, nameof(Wresult)));
+                return null;
+            }
+
+            string token = null;
+            using (var sr = new StringReader(Wresult))
+            {
+                XmlReader xmlReader = XmlReader.Create(sr);
+                xmlReader.MoveToContent();
+
+                // Read <RequestSecurityTokenResponseCollection> for wstrust 1.3 and 1.4
+                if (XmlUtil.IsStartElement(xmlReader, WsTrustConstants.Elements.RequestSecurityTokenResponseCollection, WsTrustNamespaceNon2005List))
+                    xmlReader.ReadStartElement();
+
+                while (xmlReader.IsStartElement())
+                {
+                    // Read <RequestSecurityTokenResponse>
+                    if (!XmlUtil.IsStartElement(xmlReader, WsTrustConstants.Elements.RequestSecurityTokenResponse, WsTrustNamespaceList))
+                    {
+                        xmlReader.Skip();
+                        continue;
+                    }
+
+                    xmlReader.ReadStartElement();
+                    while (xmlReader.IsStartElement())
+                    {
+                        if (!XmlUtil.IsStartElement(xmlReader, WsTrustConstants.Elements.RequestedSecurityToken, WsTrustNamespaceList))
+                        {
+                            xmlReader.Skip();
+                            continue;
+                        }
+                        
+                        // Multiple tokens were found in the RequestSecurityTokenCollection. Only a single token is supported.
+                        if (token != null)
+                            throw LogExceptionMessage(new WsFederationException(LogMessages.IDX22903));
+
+                        using (var ms = new MemoryStream())
+                        {
+                            using (var writer = XmlDictionaryWriter.CreateTextWriter(ms, Encoding.UTF8, false))
+                            {
+                                writer.WriteNode(xmlReader, true);
+                                writer.Flush();
+                            }
+
+                            ms.Seek(0, SeekOrigin.Begin);
+                            var memoryReader = XmlDictionaryReader.CreateTextReader(ms, Encoding.UTF8, XmlDictionaryReaderQuotas.Max, null);
+                            var dom = new XmlDocument()
+                            {
+                                PreserveWhitespace = true
+                            };
+
+                            dom.Load(memoryReader);
+                            token = dom.DocumentElement.InnerXml;
+                        }
+                    }
+
+                    // Read </RequestSecurityTokenResponse>
+                    xmlReader.ReadEndElement();
+                }
+            }
+
+            if (token == null)
+                throw LogExceptionMessage(new WsFederationException(LogMessages.IDX22902));
+
+            return token;
+        }
+
+        /// <summary>
+        /// Gets a boolean representing if the <see cref="WsFederationMessage"/> is a 'sign-in-message'.
         /// </summary>
         public bool IsSignInMessage
         {
-            get
-            {
-                return Wa == WsFederationConstants.WsFederationActions.SignIn;
-            }
+            get => Wa == WsFederationConstants.WsFederationActions.SignIn;
         }
         
         /// <summary>
-        /// Gets a boolean representating if the <see cref="WsFederationMessage"/> is a 'sign-out-message'.
+        /// Gets a boolean representing if the <see cref="WsFederationMessage"/> is a 'sign-out-message'.
         /// </summary>
         public bool IsSignOutMessage
         {
-            get
-            {
-                return Wa == WsFederationConstants.WsFederationActions.SignOut;
-            }
+            get => Wa == WsFederationConstants.WsFederationActions.SignOut;
         }
 
         /// <summary>
@@ -333,7 +382,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
         }
 
         /// <summary>
-        /// Gets or sets 'Wencoding'.
+        /// Gets or sets 'wencoding'.
         /// </summary>
         [property: SuppressMessage("Microsoft.Naming", "CA1704")]
         public string Wencoding

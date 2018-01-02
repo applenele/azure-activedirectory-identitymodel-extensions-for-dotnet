@@ -56,13 +56,7 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
         public string PreferredPrefix
         {
             get => _preferredPrefix;
-            set
-            {
-                if (string.IsNullOrEmpty(value))
-                    throw LogExceptionMessage(new ArgumentNullException(nameof(value)));
-
-                _preferredPrefix = value;
-            }
+            set => _preferredPrefix = string.IsNullOrEmpty(value) ? throw LogExceptionMessage(new ArgumentNullException(nameof(value))) : value;
         }
 
 
@@ -306,16 +300,19 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
             return stringToTrim.Trim(charsToTrim);
         }
 
-#endregion
+        #endregion
 
-#region Write Metadata
+        #region Write Metadata
 
         /// <summary>
         /// Write the content in configuration into writer.
         /// </summary>
         /// <param name="writer">The <see cref="XmlWriter"/> used to write the configuration content.</param>
         /// <param name="configuration">The <see cref="WsFederationConfiguration"/> provided.</param>
-        /// <exception cref="ArgumentNullException">if <paramref name="writer"/> or <paramref name="configuration"/> parameter is missing.</exception>
+        /// <exception cref="ArgumentNullException">if <paramref name="writer"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">if <paramref name="configuration"/> is null.</exception>
+        /// <exception cref="XmlWriteException">if <paramref name="configuration"/>.Issuer is null or empty.</exception>
+        /// <exception cref="XmlWriteException">if <paramref name="configuration"/>.TokenEndpoint is null or empty.</exception>
         /// <exception cref="XmlWriteException">if error occurs when writing metadata.</exception>
         public void WriteMetadata(XmlWriter writer, WsFederationConfiguration configuration)
         {
@@ -325,14 +322,14 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
             if (configuration == null)
                 throw LogArgumentNullException(nameof(configuration));
 
-            if (configuration.SigningCredentials != null)
-                writer = new EnvelopedSignatureWriter(writer, configuration.SigningCredentials, "id");
-
             if (string.IsNullOrEmpty(configuration.Issuer))
                 throw XmlUtil.LogWriteException(LogMessages.IDX22810);
 
             if (string.IsNullOrEmpty(configuration.TokenEndpoint))
                 throw XmlUtil.LogWriteException(LogMessages.IDX22811);
+
+            if (configuration.SigningCredentials != null)
+                writer = new EnvelopedSignatureWriter(writer, configuration.SigningCredentials, "id");
 
             writer.WriteStartDocument();
 
@@ -393,6 +390,6 @@ namespace Microsoft.IdentityModel.Protocols.WsFederation
             writer.WriteEndDocument();
         }
 
-#endregion
+        #endregion
     }
 }
